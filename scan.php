@@ -95,6 +95,7 @@ require_once __DIR__ . '/includes/header.php';
     font-size: 12.5px;
 }
 .scan-history-item:last-child { border-bottom: none; }
+.scan-history-item:hover { background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); padding-left: 6px; padding-right: 6px; }
 .scan-error {
     text-align: center;
     padding: 30px 20px;
@@ -230,7 +231,7 @@ require_once __DIR__ . '/includes/header.php';
             return;
         }
         var a = data.asset;
-        var loan = data.active_loan;
+        var activeLoans = data.active_loans || [];
 
         var html = '<div class="card scan-result-card">';
         html += '<div class="scan-result-header">';
@@ -252,14 +253,31 @@ require_once __DIR__ . '/includes/header.php';
             html += '<div style="margin-bottom:16px;"><div class="block-label">Spesifikasi</div><p>' + escapeHtml(a.specification) + '</p></div>';
         }
 
-        if (loan) {
-            html += '<div class="scan-loan-box">';
-            html += '<div class="block-label" style="margin-bottom:10px;">Sedang Dipinjam</div>';
-            html += '<p><strong>' + escapeHtml(loan.user_name) + '</strong>' + (loan.department ? ' &middot; ' + escapeHtml(loan.department) : '') + '</p>';
-            html += '<p>Kode Pinjam: <span class="mono">' + escapeHtml(loan.loan_code) + '</span></p>';
-            html += '<p>Periode: ' + escapeHtml(loan.loan_date_fmt) + ' &rarr; ' + escapeHtml(loan.due_date_fmt) + '</p>';
-            html += '<p>Status: ' + statusBadgeHtml(loan.status_label, loan.status) + '</p>';
-            html += '</div>';
+        if (activeLoans.length > 0) {
+            var sectionLabel = activeLoans.length > 1
+                ? 'Peminjaman Aktif (' + activeLoans.length + ' permintaan)'
+                : 'Sedang Dipinjam';
+            html += '<div class="block-label" style="margin-bottom:8px;">' + sectionLabel + '</div>';
+            activeLoans.forEach(function (loan) {
+                html += '<div class="scan-loan-box">';
+                html += '<p><strong>' + escapeHtml(loan.user_name) + '</strong>' + (loan.department ? ' &middot; ' + escapeHtml(loan.department) : '') + '</p>';
+                html += '<p>Kode Pinjam: <span class="mono">' + escapeHtml(loan.loan_code) + '</span></p>';
+                html += '<p>Periode: ' + escapeHtml(loan.loan_date_fmt) + ' &rarr; ' + escapeHtml(loan.due_date_fmt) + '</p>';
+                html += '<p>Status: ' + statusBadgeHtml(loan.status_label, loan.status) + '</p>';
+                html += '<div class="flex-gap" style="margin-top:14px; flex-wrap:wrap;">';
+                html += '<a href="<?php echo BASE_URL; ?>loan_detail.php?id=' + loan.id + '" class="btn btn-outline btn-sm">Lihat Detail Peminjaman</a>';
+                if (data.is_admin) {
+                    if (loan.status === 'pending') {
+                        html += '<a href="<?php echo BASE_URL; ?>loan_approve.php?id=' + loan.id + '" class="btn btn-success btn-sm">Setujui Peminjaman</a>';
+                    } else if (loan.status === 'approved') {
+                        html += '<a href="<?php echo BASE_URL; ?>loan_detail.php?id=' + loan.id + '" class="btn btn-primary btn-sm">Konfirmasi Serah Aset</a>';
+                    } else if (loan.status === 'active' || loan.status === 'overdue') {
+                        html += '<a href="<?php echo BASE_URL; ?>loan_detail.php?id=' + loan.id + '&action=return" class="btn btn-success btn-sm">Konfirmasi Pengembalian</a>';
+                    }
+                }
+                html += '</div>';
+                html += '</div>';
+            });
         } else {
             html += '<div class="alert alert-success" style="margin-bottom:16px;">Aset ini sedang tidak dipinjam siapapun.</div>';
         }
@@ -267,11 +285,11 @@ require_once __DIR__ . '/includes/header.php';
         if (data.history && data.history.length > 0) {
             html += '<div class="block-label" style="margin-bottom:8px;">Riwayat Peminjaman Terakhir</div>';
             data.history.forEach(function (h) {
-                html += '<div class="scan-history-item">';
+                html += '<a href="<?php echo BASE_URL; ?>loan_detail.php?id=' + h.id + '" class="scan-history-item" style="text-decoration:none; color:inherit;">';
                 html += '<span class="mono">' + escapeHtml(h.loan_code) + '</span>';
                 html += '<span>' + escapeHtml(h.user_name) + '</span>';
                 html += statusBadgeHtml(h.status_label, h.status);
-                html += '</div>';
+                html += '</a>';
             });
         }
 

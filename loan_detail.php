@@ -148,7 +148,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 
     <?php if ($loan['status'] === 'pending'): ?>
-    <form id="rejectForm" method="POST" action="" style="display:none; margin-top:16px; padding:16px; background:#fdf5f4; border-radius:4px; border:1px solid var(--line);">
+    <form id="rejectForm" method="POST" action="" style="display:none; margin-top:16px; padding:16px; background:rgba(251,113,133,0.08); border-radius:10px; border:1px solid rgba(251,113,133,0.25);">
         <input type="hidden" name="action" value="reject">
         <div class="form-group">
             <label>Alasan Penolakan *</label>
@@ -159,7 +159,7 @@ require_once __DIR__ . '/includes/header.php';
     <?php endif; ?>
 
     <?php if (in_array($loan['status'], ['active','overdue'])): ?>
-    <form id="returnForm" method="POST" action="" style="display:none; margin-top:16px; padding:16px; background:#f0f8f2; border-radius:4px; border:1px solid var(--line);">
+    <form id="returnForm" method="POST" action="" style="display:none; margin-top:16px; padding:16px; background:rgba(52,211,153,0.08); border-radius:10px; border:1px solid rgba(52,211,153,0.25);">
         <input type="hidden" name="action" value="confirm_return">
         <div class="form-row">
             <div class="form-group">
@@ -200,3 +200,24 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
+<script>
+// Jika dibuka lewat shortcut dari halaman Scan Aset (?action=return atau ?action=reject),
+// otomatis tampilkan form terkait dan scroll ke sana supaya admin tidak perlu cari tombolnya lagi.
+(function () {
+    function getQueryParam(name) {
+        var match = window.location.search.match(new RegExp('[?&]' + name + '=([^&]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+    var action = getQueryParam('action');
+    var targetId = action === 'return' ? 'returnForm' : (action === 'reject' ? 'rejectForm' : null);
+    if (!targetId) return;
+    var form = document.getElementById(targetId);
+    if (form) {
+        form.style.display = 'block';
+        setTimeout(function () {
+            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+    }
+})();
+</script>

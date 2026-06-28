@@ -40,27 +40,29 @@ if (!$asset) {
     exit;
 }
 
-// Ambil transaksi peminjaman yang sedang berjalan untuk aset ini (jika ada)
+// Ambil SEMUA transaksi peminjaman yang sedang aktif/pending untuk aset ini
+// (bisa lebih dari 1 jika beberapa user mengajukan sebelum admin menyetujui)
 $loanStmt = $conn->prepare("
     SELECT l.*, u.name as user_name, u.department, u.email, u.phone
     FROM loans l
     JOIN users u ON u.id = l.user_id
     WHERE l.asset_id = ? AND l.status IN ('pending','approved','active','overdue')
-    ORDER BY l.created_at DESC
-    LIMIT 1
+    ORDER BY
+        FIELD(l.status, 'active','overdue','approved','pending'),
+        l.created_at ASC
 ");
 $loanStmt->bind_param('i', $asset['id']);
 $loanStmt->execute();
-$activeLoan = $loanStmt->get_result()->fetch_assoc();
+$activeLoans = $loanStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Ambil 3 riwayat peminjaman terakhir (termasuk yang sudah selesai) untuk konteks tambahan
+// Ambil 5 riwayat peminjaman terakhir (termasuk yang sudah selesai) untuk konteks tambahan
 $historyStmt = $conn->prepare("
-    SELECT l.loan_code, l.status, l.loan_date, l.due_date, l.return_date, u.name as user_name
+    SELECT l.id, l.loan_code, l.status, l.loan_date, l.due_date, l.return_date, u.name as user_name
     FROM loans l
     JOIN users u ON u.id = l.user_id
     WHERE l.asset_id = ?
     ORDER BY l.created_at DESC
-    LIMIT 3
+    LIMIT 5
 ");
 $historyStmt->bind_param('i', $asset['id']);
 $historyStmt->execute();
@@ -89,19 +91,22 @@ echo json_encode([
         'status_label' => $statusLabels[$asset['status']] ?? $asset['status'],
         'notes' => $asset['notes'],
     ],
-    'active_loan' => $activeLoan ? [
-        'loan_code' => $activeLoan['loan_code'],
-        'status' => $activeLoan['status'],
-        'status_label' => $statusLabels[$activeLoan['status']] ?? $activeLoan['status'],
-        'user_name' => $activeLoan['user_name'],
-        'department' => $activeLoan['department'],
-        'loan_date' => $activeLoan['loan_date'],
-        'due_date' => $activeLoan['due_date'],
-        'loan_date_fmt' => formatDate($activeLoan['loan_date']),
-        'due_date_fmt' => formatDate($activeLoan['due_date']),
-    ] : null,
+    'active_loans' => array_map(function ($l) use ($statusLabels) {
+        return [
+            'id' => $l['id'],
+            'loan_code' => $l['loan_code'],
+            'status' => $l['status'],
+            'status_label' => $statusLabels[$l['status']] ?? $l['status'],
+            'user_name' => $l['user_name'],
+            'department' => $l['department'],
+            'loan_date_fmt' => formatDate($l['loan_date']),
+            'due_date_fmt' => formatDate($l['due_date']),
+        ];
+    }, $activeLoans),
+    'is_admin' => isAdmin(),
     'history' => array_map(function ($h) use ($statusLabels) {
         return [
+            'id' => $h['id'],
             'loan_code' => $h['loan_code'],
             'status' => $h['status'],
             'status_label' => $statusLabels[$h['status']] ?? $h['status'],

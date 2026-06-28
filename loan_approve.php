@@ -34,6 +34,41 @@ $stmt->execute();
 
 logLoanAction($conn, $id, 'approved', 'Disetujui oleh admin', $_SESSION['user_id']);
 
+// Auto-reject semua pengajuan pending lain untuk aset yang sama.
+// Karena 1 aset hanya bisa dipinjam 1 orang, peminjaman yang belum disetujui
+// otomatis gugur begitu ada yang disetujui.
+$autoRejectReason = 'Aset telah disetujui untuk dipinjam oleh pengguna lain.';
+$rejectStmt = $conn->prepare("
+    SELECT id FROM loans
+    WHERE asset_id = ? AND id != ? AND status = 'pending'
+");
+$rejectStmt->bind_param('ii', $loan['asset_id'], $id);
+$rejectStmt->execute();
+$pendingOthers = $rejectStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+if (!empty($pendingOthers)) {
+    $otherIds = array_column($pendingOthers, 'id');
+    $placeholders = implode(',', array_fill(0, count($otherIds), '?'));
+    $types = str_repeat('i', count($otherIds));
+
+    $updateStmt = $conn->prepare("
+        UPDATE loans
+        SET status = 'rejected',
+            rejection_reason = ?,
+            approved_by = ?,
+            approved_at = NOW()
+        WHERE id IN ($placeholders)
+    ");
+    $params = array_merge([$autoRejectReason, $_SESSION['user_id']], $otherIds);
+    $bindTypes = 'si' . $types;
+    $updateStmt->bind_param($bindTypes, ...$params);
+    $updateStmt->execute();
+
+    foreach ($otherIds as $otherId) {
+        logLoanAction($conn, $otherId, 'rejected', 'Otomatis ditolak: ' . $autoRejectReason, $_SESSION['user_id']);
+    }
+}
+
 flash('success', 'Peminjaman disetujui. Silakan konfirmasi serah aset setelah aset diberikan ke peminjam.');
 header('Location: ' . BASE_URL . 'loan_detail.php?id=' . $id);
 exit;
