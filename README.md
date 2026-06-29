@@ -74,23 +74,23 @@ Edit file `config/database.php`:
 ```php
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
-define('DB_PASS', '');           // sesuaikan dengan password MySQL Anda
+define('DB_PASS', '');
 define('DB_NAME', 'it_asset_loan');
 
-define('BASE_URL', '/it-asset-loan/'); // sesuaikan dengan folder/subfolder di server Anda
+define('BASE_URL', '/it-asset-loan/');
 ```
 
 Jika aplikasi diakses langsung dari root domain (bukan subfolder), set `BASE_URL` menjadi `'/'`.
 
 ### 4. Upload ke Server
-Salin seluruh folder `it-asset-loan/` ke direktori web server Anda, misalnya:
+Salin seluruh folder `it-asset-loan/` ke direktori web server, misalnya:
 - XAMPP: `C:/xampp/htdocs/it-asset-loan/`
 - Linux/cPanel: `/var/www/html/it-asset-loan/` atau `public_html/it-asset-loan/`
 
 Pastikan folder `uploads/` dan `exports/` dapat ditulis oleh web server (permission 755/775).
 
 ### 5. Akses Aplikasi
-Buka browser ke `http://localhost/it-asset-loan/` (atau sesuai domain Anda).
+Buka browser ke `http://localhost/it-asset-loan/`.
 
 ## Akun Demo
 
